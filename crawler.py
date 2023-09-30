@@ -13,12 +13,24 @@ visited = set()
 
 def is_related_to_immigration(text):
     # Use the first 1000 characters
-    prompt = f"What is this text about: {text[:1000]}"
+    prompt = f"Does this text discuss immigration in Canada: {text[:2000]}"
     response = openai.ChatCompletion.create(
-        engine="gpt-4", messages=[{"role": "user", "content": "Hello world"}])
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.2,
+        max_tokens=60,
+        return_prompt=True
+    )
 
-    # If the response contains "immigration" or "Canada", return True
-    return "immigration" in response.choices[0].text.lower() or "canada" in response.choices[0].text.lower()
+    # List of related keywords
+    keywords = ["immigration", "canada", "visa",
+                "citizenship", "refugee", "permanent resident"]
+
+    # If the response contains any of the keywords, return True
+    return any(keyword in response.choices[0].message['content'].lower() for keyword in keywords)
 
 
 def crawl_website(url, depth=0, max_depth=2):

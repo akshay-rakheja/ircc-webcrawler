@@ -1,8 +1,8 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
-# Set to store visited URLs
 visited = set()
 
 
@@ -11,38 +11,25 @@ def crawl_website(url, depth=0, max_depth=2):
         return
 
     try:
-        # Sending a GET request to the URL
         response = requests.get(url)
-
-        # Checking if the GET request was successful
         if response.status_code == 200:
-
-            # Mark the URL as visited
             visited.add(url)
-
-            # Parsing the HTML content using BeautifulSoup
             soup = BeautifulSoup(response.content, 'html.parser')
 
-            # Capture text data (example: capturing text within paragraph tags)
-            paragraphs = soup.find_all('p')
-            for i, p in enumerate(paragraphs):
-                print(f"Paragraph {i+1}: {p.get_text()}")
+            # Save content to a file
+            save_content_to_file(url, soup.get_text())
 
-            # Find all the links on the web page
             links = soup.find_all('a')
-
             for link in links:
-                # Create an absolute URL
                 absolute_link = urljoin(url, link.get('href'))
-
-                # Extract the base URL to stick to the same domain
                 base_url = urlparse(url).scheme + "://" + \
                     urlparse(url).hostname
 
-                # Continue crawling if it's an unvisited link within the same domain
-                if base_url in absolute_link and absolute_link not in visited:
-                    print(f"Crawling: {absolute_link}")
-                    crawl_website(absolute_link, depth + 1, max_depth)
+                # Check if "immigration" is in the URL
+                if "immigration" in absolute_link:
+                    if base_url in absolute_link and absolute_link not in visited:
+                        print(f"Crawling: {absolute_link}")
+                        crawl_website(absolute_link, depth + 1, max_depth)
 
         else:
             print(
@@ -52,6 +39,19 @@ def crawl_website(url, depth=0, max_depth=2):
         print(f"An error occurred: {e}")
 
 
-if __name__ == '__main__':
-    url_to_crawl = 'https://www.canada.ca/en/immigration-refugees-citizenship.html'
-    crawl_website(url_to_crawl)
+def save_content_to_file(url, content):
+    # Create a directory named "data" if it doesn't exist
+    if not os.path.exists("data"):
+        os.makedirs("data")
+
+    # Replace all non-alphanumeric characters with underscores
+    filename = "".join(c if c.isalnum() else "_" for c in url)
+
+    # Write the content to a file in the "data" directory
+    with open(f"data/{filename}.txt", "w", encoding="utf-8") as file:
+        file.write(content)
+
+
+if __name__ == "__main__":
+    crawl_website(
+        "https://www.canada.ca/en/immigration-refugees-citizenship.html")

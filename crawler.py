@@ -2,8 +2,23 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
+import openai
+from dotenv import load_dotenv
+
+load_dotenv()
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 visited = set()
+
+
+def is_related_to_immigration(text):
+    # Use the first 1000 characters
+    prompt = f"What is this text about: {text[:1000]}"
+    response = openai.ChatCompletion.create(
+        engine="gpt-4", messages=[{"role": "user", "content": "Hello world"}])
+
+    # If the response contains "immigration" or "Canada", return True
+    return "immigration" in response.choices[0].text.lower() or "canada" in response.choices[0].text.lower()
 
 
 def crawl_website(url, depth=0, max_depth=2):
@@ -15,9 +30,11 @@ def crawl_website(url, depth=0, max_depth=2):
         if response.status_code == 200:
             visited.add(url)
             soup = BeautifulSoup(response.content, 'html.parser')
+            page_text = soup.get_text()
 
-            # Save content to a file
-            save_content_to_file(url, soup.get_text())
+            # Check if the page is related to immigration
+            if is_related_to_immigration(page_text):
+                save_content_to_file(url, page_text)
 
             links = soup.find_all('a')
             for link in links:
@@ -25,11 +42,9 @@ def crawl_website(url, depth=0, max_depth=2):
                 base_url = urlparse(url).scheme + "://" + \
                     urlparse(url).hostname
 
-                # Check if "immigration" is in the URL
-                if "immigration" in absolute_link:
-                    if base_url in absolute_link and absolute_link not in visited:
-                        print(f"Crawling: {absolute_link}")
-                        crawl_website(absolute_link, depth + 1, max_depth)
+                if base_url in absolute_link and absolute_link not in visited:
+                    print(f"Crawling: {absolute_link}")
+                    crawl_website(absolute_link, depth + 1, max_depth)
 
         else:
             print(
